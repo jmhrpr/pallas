@@ -127,6 +127,12 @@ pub enum Value {
     Multiasset(Coin, Multiasset<Coin>),
 }
 
+impl Value {
+    pub fn encode(&self) -> Vec<u8> {
+        minicbor::to_vec(self).unwrap()
+    }
+}
+
 impl<'b, C> minicbor::decode::Decode<'b, C> for Value {
     fn decode(d: &mut minicbor::Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
         match d.datatype()? {
