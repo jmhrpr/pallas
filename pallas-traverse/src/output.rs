@@ -3,7 +3,7 @@ use std::{borrow::Cow, ops::Deref};
 use pallas_addresses::{Address, ByronAddress, Error as AddressError};
 use pallas_codec::minicbor;
 use pallas_primitives::{
-    alonzo,
+    alonzo::{self, Value},
     babbage::{self, DatumOption, ScriptRef},
     byron,
 };
@@ -74,6 +74,17 @@ impl<'b> MultiEraOutput<'b> {
                 alonzo::Value::Coin(c) => c,
                 alonzo::Value::Multiasset(c, _) => c,
             },
+        }
+    }
+
+    pub fn value(&self) -> Value {
+        match self {
+            MultiEraOutput::Byron(x) => Value::Coin(x.amount),
+            MultiEraOutput::Babbage(x) => match x.deref().deref() {
+                babbage::TransactionOutput::Legacy(x) => x.amount.clone(),
+                babbage::TransactionOutput::PostAlonzo(x) => x.value.clone(),
+            },
+            MultiEraOutput::AlonzoCompatible(x) => x.amount.clone()
         }
     }
 
