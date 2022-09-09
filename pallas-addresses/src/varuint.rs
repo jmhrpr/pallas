@@ -26,10 +26,6 @@ pub fn read(cursor: &mut Cursor<&[u8]>) -> Result<u64, Error> {
 
         output = (output << 7) | (byte & 0x7F) as u128;
 
-        if output > u64::MAX.into() {
-            return Err(Error::VarUintOverflow);
-        }
-
         if (byte & 0x80) == 0 {
             return Ok(output as u64);
         }
