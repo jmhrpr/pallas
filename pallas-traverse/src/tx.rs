@@ -4,9 +4,11 @@ use pallas_codec::{minicbor, utils::KeepRaw};
 use pallas_crypto::hash::Hash;
 use pallas_primitives::{alonzo, babbage, byron};
 
+use crate::hashes::ToHash;
+
 use crate::{
     Era, MultiEraCert, MultiEraInput, MultiEraMeta, MultiEraMint, MultiEraOutput, MultiEraSigners,
-    MultiEraTx, MultiEraWithdrawals, OriginalHash,
+    MultiEraTx, MultiEraWithdrawals, MultiEraWitnesses,
 };
 
 impl<'b> MultiEraTx<'b> {
@@ -61,9 +63,9 @@ impl<'b> MultiEraTx<'b> {
 
     pub fn hash(&self) -> Hash<32> {
         match self {
-            MultiEraTx::AlonzoCompatible(x, _) => x.transaction_body.original_hash(),
-            MultiEraTx::Babbage(x) => x.transaction_body.original_hash(),
-            MultiEraTx::Byron(x) => x.transaction.original_hash(),
+            MultiEraTx::AlonzoCompatible(x, _) => x.transaction_body.to_hash(),
+            MultiEraTx::Babbage(x) => x.transaction_body.to_hash(),
+            MultiEraTx::Byron(x) => x.transaction.to_hash(),
         }
     }
 
@@ -219,41 +221,6 @@ impl<'b> MultiEraTx<'b> {
         }
     }
 
-    /// Returns the list of inputs consumed by the Tx
-    ///
-    /// Helper method to abstract the logic of which inputs are consumed
-    /// depending on the validity of the Tx. If the Tx is valid, this method
-    /// will return the list of inputs. If the tx is invalid, it will return the
-    /// collateral.
-    pub fn consumes(&self) -> Vec<MultiEraInput> {
-        match self.is_valid() {
-            true => self.inputs(),
-            false => self.collateral(),
-        }
-    }
-
-    /// Returns the list of outputs produced by the Tx
-    ///
-    /// Helper method to abstract the logic of which outputs are produced
-    /// depending on the validity of the Tx. If the Tx is valid, this method
-    /// will return the list of inputs. If the tx is invalid, it will return the
-    /// collateral.
-    pub fn produces(&self) -> Vec<MultiEraOutput> {
-        match self.is_valid() {
-            true => self.outputs(),
-            false => self.collateral_return().into_iter().collect(),
-        }
-    }
-
-    /// Returns the list of UTxO required by the Tx
-    ///
-    /// Helper method to yield all of the UTxO that the Tx requires in order to
-    /// be fulfilled. This includes normal inputs, reference inputs and
-    /// collateral.
-    pub fn requires(&self) -> Vec<MultiEraInput> {
-        [self.inputs(), self.reference_inputs(), self.collateral()].concat()
-    }
-
     pub fn withdrawals(&self) -> MultiEraWithdrawals {
         match self {
             MultiEraTx::AlonzoCompatible(x, _) => match &x.transaction_body.withdrawals {
@@ -338,6 +305,16 @@ impl<'b> MultiEraTx<'b> {
                 .map(MultiEraSigners::AlonzoCompatible)
                 .unwrap_or_default(),
             MultiEraTx::Byron(_) => MultiEraSigners::NotApplicable,
+        }
+    }
+
+    pub fn witnesses(&self) -> MultiEraWitnesses {
+        match self {
+            MultiEraTx::AlonzoCompatible(x, _) => {
+                MultiEraWitnesses::AlonzoCompatible(&x.transaction_witness_set)
+            }
+            MultiEraTx::Babbage(x) => MultiEraWitnesses::Babbage(&x.transaction_witness_set),
+            MultiEraTx::Byron(x) => MultiEraWitnesses::Byron(&x.witness),
         }
     }
 

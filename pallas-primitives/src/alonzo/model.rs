@@ -2,6 +2,8 @@
 //!
 //! Handcrafted, idiomatic rust artifacts based on based on the [Alonzo CDDL](https://github.com/input-output-hk/cardano-ledger/blob/master/eras/alonzo/test-suite/cddl-files/alonzo.cddl) file in IOHK repo.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 use pallas_codec::minicbor::{data::Tag, Decode, Encode};
@@ -77,7 +79,7 @@ pub struct Header {
     pub body_signature: Bytes,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct TransactionInput {
     #[n(0)]
     pub transaction_id: Hash<32>,
@@ -113,7 +115,7 @@ pub type PolicyId = Hash<28>;
 
 pub type AssetName = Bytes;
 
-pub type Multiasset<A> = KeyValuePairs<PolicyId, KeyValuePairs<AssetName, A>>;
+pub type Multiasset<A> = BTreeMap<PolicyId, BTreeMap<AssetName, A>>;
 
 pub type Mint = Multiasset<i64>;
 
@@ -236,7 +238,7 @@ impl<C> minicbor::encode::Encode<C> for InstantaneousRewardSource {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum InstantaneousRewardTarget {
-    StakeCredentials(KeyValuePairs<StakeCredential, i64>),
+    StakeCredentials(BTreeMap<StakeCredential, i64>),
     OtherAccountingPot(Coin),
 }
 
@@ -288,7 +290,7 @@ pub struct MoveInstantaneousReward {
 
 pub type RewardAccount = Bytes;
 
-pub type Withdrawals = KeyValuePairs<RewardAccount, Coin>;
+pub type Withdrawals = BTreeMap<RewardAccount, Coin>;
 
 pub type RequiredSigners = Vec<AddrKeyhash>;
 
@@ -646,7 +648,7 @@ pub enum Language {
 
 pub type CostModel = Vec<i64>;
 
-pub type CostMdls = KeyValuePairs<Language, CostModel>;
+pub type CostMdls = BTreeMap<Language, CostModel>;
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 #[cbor(map)]
@@ -704,7 +706,7 @@ pub struct ProtocolParamUpdate {
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
 pub struct Update {
     #[n(0)]
-    pub proposed_protocol_parameter_updates: KeyValuePairs<Genesishash, ProtocolParamUpdate>,
+    pub proposed_protocol_parameter_updates: BTreeMap<Genesishash, ProtocolParamUpdate>,
 
     #[n(1)]
     pub epoch: Epoch,
@@ -920,7 +922,7 @@ impl<C> minicbor::encode::Encode<C> for BigInt {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum PlutusData {
     Constr(Constr<PlutusData>),
-    Map(KeyValuePairs<PlutusData, PlutusData>),
+    Map(BTreeMap<PlutusData, PlutusData>),
     BigInt(BigInt),
     BoundedBytes(Bytes),
     Array(Vec<PlutusData>),
@@ -1163,7 +1165,7 @@ pub struct BootstrapWitness {
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 #[cbor(map)]
-pub struct WitnessSet {
+pub struct TransactionWitnessSet {
     #[n(0)]
     pub vkeywitness: Option<Vec<VKeyWitness>>,
 
@@ -1181,43 +1183,6 @@ pub struct WitnessSet {
 
     #[n(5)]
     pub redeemer: Option<Vec<Redeemer>>,
-}
-
-#[derive(Encode, Decode, Debug, PartialEq, Clone)]
-#[cbor(map)]
-pub struct MintedWitnessSet<'b> {
-    #[n(0)]
-    pub vkeywitness: Option<Vec<VKeyWitness>>,
-
-    #[n(1)]
-    pub native_script: Option<Vec<NativeScript>>,
-
-    #[n(2)]
-    pub bootstrap_witness: Option<Vec<BootstrapWitness>>,
-
-    #[n(3)]
-    pub plutus_script: Option<Vec<PlutusScript>>,
-
-    #[b(4)]
-    pub plutus_data: Option<Vec<KeepRaw<'b, PlutusData>>>,
-
-    #[n(5)]
-    pub redeemer: Option<Vec<Redeemer>>,
-}
-
-impl<'b> From<MintedWitnessSet<'b>> for WitnessSet {
-    fn from(x: MintedWitnessSet<'b>) -> Self {
-        WitnessSet {
-            vkeywitness: x.vkeywitness,
-            native_script: x.native_script,
-            bootstrap_witness: x.bootstrap_witness,
-            plutus_script: x.plutus_script,
-            plutus_data: x
-                .plutus_data
-                .map(|x| x.into_iter().map(|x| x.unwrap()).collect()),
-            redeemer: x.redeemer,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
@@ -1239,7 +1204,7 @@ pub enum Metadatum {
     Bytes(Bytes),
     Text(String),
     Array(Vec<Metadatum>),
-    Map(KeyValuePairs<Metadatum, Metadatum>),
+    Map(BTreeMap<Metadatum, Metadatum>),
 }
 
 impl<'b, C> minicbor::Decode<'b, C> for Metadatum {
@@ -1298,7 +1263,7 @@ impl<C> minicbor::Encode<C> for Metadatum {
 
 pub type MetadatumLabel = u64;
 
-pub type Metadata = KeyValuePairs<MetadatumLabel, Metadatum>;
+pub type Metadata = BTreeMap<MetadatumLabel, Metadatum>;
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Clone)]
 pub struct ShelleyMaAuxiliaryData {
@@ -1369,10 +1334,10 @@ pub struct Block {
     pub transaction_bodies: Vec<TransactionBody>,
 
     #[n(2)]
-    pub transaction_witness_sets: Vec<WitnessSet>,
+    pub transaction_witness_sets: Vec<TransactionWitnessSet>,
 
     #[n(3)]
-    pub auxiliary_data_set: KeyValuePairs<TransactionIndex, AuxiliaryData>,
+    pub auxiliary_data_set: BTreeMap<TransactionIndex, AuxiliaryData>,
 
     #[n(4)]
     pub invalid_transactions: Option<Vec<TransactionIndex>>,
@@ -1392,7 +1357,7 @@ pub struct MintedBlock<'b> {
     pub transaction_bodies: MaybeIndefArray<KeepRaw<'b, TransactionBody>>,
 
     #[n(2)]
-    pub transaction_witness_sets: MaybeIndefArray<KeepRaw<'b, MintedWitnessSet<'b>>>,
+    pub transaction_witness_sets: MaybeIndefArray<KeepRaw<'b, TransactionWitnessSet>>,
 
     #[n(3)]
     pub auxiliary_data_set: KeyValuePairs<TransactionIndex, KeepRaw<'b, AuxiliaryData>>,
@@ -1416,15 +1381,13 @@ impl<'b> From<MintedBlock<'b>> for Block {
                 .to_vec()
                 .into_iter()
                 .map(|x| x.unwrap())
-                .map(WitnessSet::from)
                 .collect(),
             auxiliary_data_set: x
                 .auxiliary_data_set
                 .to_vec()
                 .into_iter()
                 .map(|(k, v)| (k, v.unwrap()))
-                .collect::<Vec<_>>()
-                .into(),
+                .collect(),
             invalid_transactions: x.invalid_transactions.map(|x| x.into()),
         }
     }
@@ -1436,7 +1399,7 @@ pub struct Tx {
     pub transaction_body: TransactionBody,
 
     #[n(1)]
-    pub transaction_witness_set: WitnessSet,
+    pub transaction_witness_set: TransactionWitnessSet,
 
     #[n(2)]
     pub success: bool,
@@ -1451,7 +1414,7 @@ pub struct MintedTx<'b> {
     pub transaction_body: KeepRaw<'b, TransactionBody>,
 
     #[n(1)]
-    pub transaction_witness_set: KeepRaw<'b, MintedWitnessSet<'b>>,
+    pub transaction_witness_set: KeepRaw<'b, TransactionWitnessSet>,
 
     #[n(2)]
     pub success: bool,
@@ -1512,8 +1475,6 @@ mod tests {
             include_str!("../../../test_data/alonzo22.block"),
             // peculiar block with indef byte array in plutus data
             include_str!("../../../test_data/alonzo23.block"),
-            // peculiar block with invalid address (pointer overflow)
-            include_str!("../../../test_data/alonzo27.block"),
         ];
 
         for (idx, block_str) in test_blocks.iter().enumerate() {

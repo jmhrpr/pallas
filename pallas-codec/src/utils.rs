@@ -1,6 +1,6 @@
 use minicbor::{data::Tag, Decode, Encode};
 use serde::{Deserialize, Serialize};
-use std::{fmt, ops::Deref};
+use std::ops::Deref;
 
 /// Utility for skipping parts of the CBOR payload, use only for debugging
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
@@ -37,32 +37,19 @@ impl<C, const N: usize> minicbor::Encode<C> for SkipCbor<N> {
 /// canonicalization for isomorphic decoding / encoding operators, we use a Vec
 /// as the underlaying struct for storage of the items (as opposed to a BTreeMap
 /// or HashMap).
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(from = "Vec::<(K, V)>", into = "Vec::<(K, V)>")]
-pub enum KeyValuePairs<K, V>
-where
-    K: Clone,
-    V: Clone,
-{
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum KeyValuePairs<K, V> {
     Def(Vec<(K, V)>),
     Indef(Vec<(K, V)>),
 }
 
-impl<K, V> KeyValuePairs<K, V>
-where
-    K: Clone,
-    V: Clone,
-{
+impl<K, V> KeyValuePairs<K, V> {
     pub fn to_vec(self) -> Vec<(K, V)> {
         self.into()
     }
 }
 
-impl<K, V> From<KeyValuePairs<K, V>> for Vec<(K, V)>
-where
-    K: Clone,
-    V: Clone,
-{
+impl<K, V> From<KeyValuePairs<K, V>> for Vec<(K, V)> {
     fn from(other: KeyValuePairs<K, V>) -> Self {
         match other {
             KeyValuePairs::Def(x) => x,
@@ -71,21 +58,7 @@ where
     }
 }
 
-impl<K, V> From<Vec<(K, V)>> for KeyValuePairs<K, V>
-where
-    K: Clone,
-    V: Clone,
-{
-    fn from(other: Vec<(K, V)>) -> Self {
-        KeyValuePairs::Def(other)
-    }
-}
-
-impl<K, V> Deref for KeyValuePairs<K, V>
-where
-    K: Clone,
-    V: Clone,
-{
+impl<K, V> Deref for KeyValuePairs<K, V> {
     type Target = Vec<(K, V)>;
 
     fn deref(&self) -> &Self::Target {
@@ -98,8 +71,8 @@ where
 
 impl<'b, C, K, V> minicbor::decode::Decode<'b, C> for KeyValuePairs<K, V>
 where
-    K: Encode<C> + Decode<'b, C> + Clone,
-    V: Encode<C> + Decode<'b, C> + Clone,
+    K: Encode<C> + Decode<'b, C>,
+    V: Encode<C> + Decode<'b, C>,
 {
     fn decode(d: &mut minicbor::Decoder<'b>, ctx: &mut C) -> Result<Self, minicbor::decode::Error> {
         let datatype = d.datatype()?;
@@ -119,8 +92,8 @@ where
 
 impl<C, K, V> minicbor::encode::Encode<C> for KeyValuePairs<K, V>
 where
-    K: Encode<C> + Clone,
-    V: Encode<C> + Clone,
+    K: Encode<C>,
+    V: Encode<C>,
 {
     fn encode<W: minicbor::encode::Write>(
         &self,
@@ -775,14 +748,6 @@ impl TryFrom<String> for Bytes {
 impl From<Bytes> for String {
     fn from(b: Bytes) -> Self {
         hex::encode(b.deref())
-    }
-}
-
-impl fmt::Display for Bytes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let bytes: Vec<u8> = self.clone().into();
-
-        f.write_str(&hex::encode(bytes))
     }
 }
 
