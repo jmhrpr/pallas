@@ -3,12 +3,12 @@ use std::{borrow::Cow, ops::Deref};
 use pallas_addresses::{Address, ByronAddress, Error as AddressError};
 use pallas_codec::minicbor;
 use pallas_primitives::{
-    alonzo::{self, Value},
-    babbage::{self, DatumOption, ScriptRef},
+    alonzo,
+    babbage::{self, Coin, DatumOption, ScriptRef},
     byron,
 };
 
-use crate::{Era, MultiEraOutput};
+use crate::{Asset, Era, MultiEraOutput, Subject};
 
 impl<'b> MultiEraOutput<'b> {
     pub fn from_byron(output: &'b byron::TxOut) -> Self {
@@ -77,15 +77,48 @@ impl<'b> MultiEraOutput<'b> {
         }
     }
 
-    pub fn value(&self) -> Value {
+    pub fn assets(&self) -> Vec<Asset> {
+        let mut assets = Vec::new();
+
         match self {
-            MultiEraOutput::Byron(x) => Value::Coin(x.amount),
+            MultiEraOutput::Byron(x) => {
+                push_lovelace(&mut assets, x.amount);
+            }
             MultiEraOutput::Babbage(x) => match x.deref().deref() {
-                babbage::TransactionOutput::Legacy(x) => x.amount.clone(),
-                babbage::TransactionOutput::PostAlonzo(x) => x.value.clone(),
+                babbage::TransactionOutput::Legacy(x) => match &x.amount {
+                    babbage::Value::Coin(c) => {
+                        push_lovelace(&mut assets, *c);
+                    }
+                    babbage::Value::Multiasset(c, multi_asset) => {
+                        push_lovelace(&mut assets, *c);
+
+                        push_native_asset(&mut assets, multi_asset);
+                    }
+                },
+                babbage::TransactionOutput::PostAlonzo(x) => match &x.value {
+                    babbage::Value::Coin(c) => {
+                        push_lovelace(&mut assets, *c);
+                    }
+                    babbage::Value::Multiasset(c, multi_asset) => {
+                        push_lovelace(&mut assets, *c);
+
+                        push_native_asset(&mut assets, multi_asset);
+                    }
+                },
             },
-            MultiEraOutput::AlonzoCompatible(x) => x.amount.clone()
-        }
+            MultiEraOutput::AlonzoCompatible(x) => match &x.amount {
+                alonzo::Value::Coin(c) => {
+                    push_lovelace(&mut assets, *c);
+                }
+                alonzo::Value::Multiasset(c, multi_asset) => {
+                    push_lovelace(&mut assets, *c);
+
+                    push_native_asset(&mut assets, multi_asset);
+                }
+            },
+        };
+
+        assets
     }
 
     pub fn as_babbage(&self) -> Option<&babbage::TransactionOutput> {
@@ -142,6 +175,24 @@ impl<'b> MultiEraOutput<'b> {
     }
 }
 
+fn push_lovelace(assets: &mut Vec<Asset>, quantity: u64) {
+    assets.push(Asset {
+        subject: Subject::Lovelace,
+        quantity,
+    })
+}
+
+fn push_native_asset(assets: &mut Vec<Asset>, multi_asset: &alonzo::Multiasset<Coin>) {
+    for (policy_id, names) in multi_asset.iter() {
+        for (asset_name, quantity) in names.iter() {
+            assets.push(Asset {
+                subject: Subject::NativeAsset(*policy_id, asset_name.clone()),
+                quantity: *quantity,
+            });
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::MultiEraBlock;
@@ -154,6 +205,7 @@ mod tests {
 
         for tx in block.txs() {
             for output in tx.outputs() {
+                assert_ne!(output.assets()[0].quantity, 0);
                 assert_ne!(output.ada_amount(), 0);
                 assert!(matches!(output.address(), Ok(_)));
             }

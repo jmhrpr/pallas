@@ -143,7 +143,7 @@ impl ShelleyPaymentPart {
             Self::Script(x) => x.to_vec(),
         }
     }
-    
+
     pub fn to_hex(&self) -> String {
         let bytes = self.to_vec();
         hex::encode(bytes)
@@ -205,7 +205,7 @@ impl ShelleyDelegationPart {
             Self::Null => vec![],
         }
     }
-    
+
     pub fn to_hex(&self) -> String {
         let bytes = self.to_vec();
         hex::encode(bytes)
@@ -849,5 +849,11 @@ mod tests {
         .into();
 
         assert_eq!(addr.to_bech32().unwrap(), MAINNET_TEST_VECTORS[0].0);
+    }
+
+    #[test]
+    fn test_minted_invalid_pointed_address() {
+        let addr = Address::from_hex("40C19D7D05E90EEB6394B53313FE79D47077DE33068C6B813BBE5C9D5681FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7F81FFFFFFFFFFFFFFFF7F81FFFFFFFFFFFFFFFF7F");
+        assert!(matches!(addr, Ok(Address::Shelley(_))));
     }
 }

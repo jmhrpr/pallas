@@ -7,7 +7,11 @@ use thiserror::Error;
 
 use pallas_codec::utils::KeepRaw;
 use pallas_crypto::hash::Hash;
-use pallas_primitives::{alonzo, babbage, byron};
+use pallas_primitives::{
+    alonzo,
+    babbage::{self, AssetName, PolicyId},
+    byron,
+};
 
 pub mod block;
 pub mod cert;
@@ -130,15 +134,28 @@ pub enum MultiEraSigners<'b> {
 }
 
 #[derive(Debug, Clone)]
-#[non_exhaustive]
-pub enum MultiEraWitnesses<'b> {
-    Byron(&'b KeepRaw<'b, byron::Witnesses>),
-    AlonzoCompatible(&'b KeepRaw<'b, alonzo::TransactionWitnessSet>),
-    Babbage(&'b KeepRaw<'b, babbage::TransactionWitnessSet>),
+pub struct OutputRef(Hash<32>, u64);
+
+#[derive(Debug, Clone)]
+pub struct Asset {
+    pub subject: Subject,
+    pub quantity: u64,
 }
 
 #[derive(Debug, Clone)]
-pub struct OutputRef(Hash<32>, u64);
+pub enum Subject {
+    Lovelace,
+    NativeAsset(PolicyId, AssetName),
+}
+
+impl ToString for Subject {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Lovelace => String::from("lovelace"),
+            Self::NativeAsset(p, n) => format!("{p}.{n}"),
+        }
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -170,4 +187,12 @@ impl Error {
     pub fn invalid_utxo_ref(str: &str) -> Self {
         Error::InvalidUtxoRef(str.to_owned())
     }
+}
+
+pub trait ComputeHash<const BYTES: usize> {
+    fn compute_hash(&self) -> pallas_crypto::hash::Hash<BYTES>;
+}
+
+pub trait OriginalHash<const BYTES: usize> {
+    fn original_hash(&self) -> pallas_crypto::hash::Hash<BYTES>;
 }
