@@ -1,16 +1,14 @@
 [package]
 name = "pallas-addresses"
 description = "Ergonomic library to work with different Cardano addresses"
-version = "0.14.0-alpha.5"
+version = "0.14.0-alpha.6"
 edition = "2021"
 repository = "https://github.com/txpipe/pallas"
 homepage = "https://github.com/txpipe/pallas"
 documentation = "https://docs.rs/pallas-byron"
 license = "Apache-2.0"
 readme = "README.md"
-authors = [
-    "Santiago Carmuega <santiago@carmuega.me>",
-]
+authors = ["Santiago Carmuega <santiago@carmuega.me>"]
 
 [dependencies]
 hex = "0.4.3"
