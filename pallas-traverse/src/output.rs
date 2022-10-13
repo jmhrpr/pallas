@@ -2,7 +2,7 @@ use std::{borrow::Cow, ops::Deref};
 
 use pallas_addresses::{Address, ByronAddress, Error as AddressError};
 use pallas_codec::minicbor;
-use pallas_primitives::{alonzo, babbage, byron};
+use pallas_primitives::{alonzo::{self, Value}, babbage, byron};
 
 use crate::{Era, MultiEraOutput};
 
@@ -52,6 +52,17 @@ impl<'b> MultiEraOutput<'b> {
             MultiEraOutput::Byron(x) => {
                 Ok(ByronAddress::new(&x.address.payload.0, x.address.crc).into())
             }
+        }
+    }
+
+    pub fn value(&self) -> Value {
+        match self {
+            MultiEraOutput::Byron(x) => Value::Coin(x.amount),
+            MultiEraOutput::Babbage(x) => match x.deref().deref() {
+                babbage::TransactionOutput::Legacy(x) => x.amount.clone(),
+                babbage::TransactionOutput::PostAlonzo(x) => x.value.clone(),
+            },
+            MultiEraOutput::AlonzoCompatible(x) => x.amount.clone()
         }
     }
 
