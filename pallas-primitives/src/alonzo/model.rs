@@ -964,9 +964,11 @@ impl<'b, C> minicbor::decode::Decode<'b, C> for PlutusData {
                 Ok(Self::Array(d.decode_with(ctx)?))
             }
 
-            _ => Err(minicbor::decode::Error::message(
-                "bad cbor data type for plutus data",
-            )),
+            _ => Err(minicbor::decode::Error::message(format!(
+                "bad cbor data type for plutus data at pos {}: {:?}",
+                d.position(),
+                type_
+            ))),
         }
     }
 }
