@@ -21,13 +21,13 @@ pub struct TransactionBuilder {
     inputs: IndexMap<TransactionInput, TransactionOutput>,
     outputs: Vec<TransactionOutput>,
 
-    reference_inputs: Vec<TransactionInput>,
-    collaterals: Vec<TransactionInput>,
+    reference_inputs: IndexMap<TransactionInput, TransactionOutput>,
+    collateral: IndexMap<TransactionInput, TransactionOutput>,
     collateral_return: Option<TransactionOutput>,
     network_params: NetworkParams,
     mint: Option<MultiAsset<i64>>,
     required_signers: Vec<AddrKeyhash>,
-    valid_after_slot: Option<u64>,
+    valid_from_slot: Option<u64>,
     valid_until_slot: Option<u64>,
     certificates: Vec<Certificate>,
     plutus_data: Vec<PlutusData>,
@@ -44,11 +44,11 @@ impl TransactionBuilder {
             inputs: Default::default(),
             outputs: Default::default(),
             reference_inputs: Default::default(),
-            collaterals: Default::default(),
+            collateral: Default::default(),
             collateral_return: Default::default(),
             mint: Default::default(),
             required_signers: Default::default(),
-            valid_after_slot: Default::default(),
+            valid_from_slot: Default::default(),
             valid_until_slot: Default::default(),
             certificates: Default::default(),
             plutus_data: Default::default(),
@@ -63,13 +63,13 @@ impl TransactionBuilder {
         self
     }
 
-    pub fn reference_input(mut self, input: TransactionInput) -> Self {
-        self.reference_inputs.push(input);
+    pub fn reference_input(mut self, input: TransactionInput, resolved: TransactionOutput) -> Self {
+        self.reference_inputs.insert(input, resolved);
         self
     }
 
-    pub fn collateral(mut self, input: TransactionInput) -> Self {
-        self.collaterals.push(input);
+    pub fn collateral(mut self, input: TransactionInput, resolved: TransactionOutput) -> Self {
+        self.collateral.insert(input, resolved);
         self
     }
 
@@ -94,8 +94,8 @@ impl TransactionBuilder {
         self
     }
 
-    pub fn valid_after(mut self, timestamp: Instant) -> Result<Self, ValidationError> {
-        self.valid_after_slot = Some(
+    pub fn valid_from(mut self, timestamp: Instant) -> Result<Self, ValidationError> {
+        self.valid_from_slot = Some(
             self.network_params
                 .timestamp_to_slot(timestamp)
                 .ok_or(ValidationError::InvalidTimestamp)?,
@@ -104,8 +104,8 @@ impl TransactionBuilder {
         Ok(self)
     }
 
-    pub fn valid_after_slot(mut self, slot: u64) -> Self {
-        self.valid_after_slot = Some(slot);
+    pub fn valid_from_slot(mut self, slot: u64) -> Self {
+        self.valid_from_slot = Some(slot);
         self
     }
 
@@ -158,12 +158,7 @@ impl TransactionBuilder {
             return Err(ValidationError::NoOutputs);
         }
 
-        if self.collaterals.iter().any(|c| {
-            self.inputs
-                .get(c)
-                .map(|i| i.is_multiasset())
-                .unwrap_or(false)
-        }) {
+        if self.collateral.iter().any(|(_, txo)| txo.is_multiasset()) {
             return Err(ValidationError::InvalidCollateralInput);
         }
 
@@ -177,6 +172,12 @@ impl TransactionBuilder {
         }
 
         let inputs = self.inputs.iter().map(|(k, _)| k.clone()).collect();
+        let reference_inputs = self
+            .reference_inputs
+            .iter()
+            .map(|(k, _)| k.clone())
+            .collect();
+        let collaterals = self.collateral.iter().map(|(k, _)| k.clone()).collect();
         let outputs = self.outputs.clone();
 
         let mut tx = transaction::Transaction {
@@ -184,7 +185,7 @@ impl TransactionBuilder {
                 inputs,
                 outputs,
                 ttl: self.valid_until_slot,
-                validity_interval_start: self.valid_after_slot,
+                validity_interval_start: self.valid_from_slot,
                 fee: 0,
                 certificates: opt_if_empty(self.certificates),
                 withdrawals: None,
@@ -192,12 +193,12 @@ impl TransactionBuilder {
                 auxiliary_data_hash: None,
                 mint: self.mint.map(|x| x.build()),
                 script_data_hash: None,
-                collateral: opt_if_empty(self.collaterals),
+                collateral: opt_if_empty(collaterals),
                 required_signers: opt_if_empty(self.required_signers),
                 network_id: NetworkId::from_u64(self.network_params.network_id()),
                 collateral_return: self.collateral_return,
                 total_collateral: None,
-                reference_inputs: opt_if_empty(self.reference_inputs),
+                reference_inputs: opt_if_empty(reference_inputs),
             },
             witness_set: WitnessSet {
                 vkeywitness: None,

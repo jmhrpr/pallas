@@ -115,7 +115,7 @@ fn test_build_transaction_with_valid_after() -> Result<(), ValidationError> {
     let tx = TransactionBuilder::new(NetworkParams::mainnet())
         .input(input, resolved)
         .output(output)
-        .valid_after_slot(slot)
+        .valid_from_slot(slot)
         .build_hex()?;
 
     assert_transaction!(tx)
@@ -132,7 +132,7 @@ fn test_build_transaction_with_timestamp_valid_after() -> Result<(), ValidationE
     let tx = TransactionBuilder::new(NetworkParams::mainnet())
         .input(input, resolved)
         .output(output)
-        .valid_after(valid_after)?
+        .valid_from(valid_after)?
         .build_hex()?;
 
     assert_transaction!(tx)
@@ -179,9 +179,9 @@ fn test_build_with_reference_inputs() -> Result<(), ValidationError> {
     let output = Output::lovelaces(vec![], 1000000).build();
 
     let tx = TransactionBuilder::new(NetworkParams::mainnet())
-        .input(input.clone(), resolved)
+        .input(input.clone(), resolved.clone())
         .output(output)
-        .reference_input(input)
+        .reference_input(input, resolved)
         .build_hex()?;
 
     assert_transaction!(tx)
@@ -197,9 +197,9 @@ fn test_build_with_collateral_inputs() -> Result<(), ValidationError> {
     let collateral_return = Output::lovelaces(vec![], 2).build();
 
     let tx = TransactionBuilder::new(NetworkParams::mainnet())
-        .input(input.clone(), resolved)
+        .input(input.clone(), resolved.clone())
         .output(output)
-        .collateral(collateral)
+        .collateral(collateral, resolved)
         .collateral_return(collateral_return)
         .build_hex()?;
 
