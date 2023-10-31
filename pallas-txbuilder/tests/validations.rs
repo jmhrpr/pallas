@@ -21,7 +21,7 @@ fn test_transaction_building_fails_with_multiasset_collateral_return() -> Result
     let collateral_return = Output::multiasset(vec![], 1000000, assets).build();
 
     let tx = TransactionBuilder::new(NetworkParams::mainnet())
-        .input(input.clone(), resolved)
+        .input(input.clone(), Some(resolved))
         .output(output)
         .collateral_return(collateral_return)
         .build();
@@ -40,9 +40,9 @@ fn test_transaction_building_fails_with_multiasset_collateral_input() -> Result<
     let output = Output::lovelaces(vec![], 1000000).build();
 
     let tx = TransactionBuilder::new(NetworkParams::mainnet())
-        .input(input.clone(), resolved.clone())
+        .input(input.clone(), Some(resolved.clone()))
         .output(output)
-        .collateral(input, resolved)
+        .collateral(input, Some(resolved))
         .build();
 
     assert_matches!(tx, Err(ValidationError::InvalidCollateralInput));

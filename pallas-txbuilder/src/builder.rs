@@ -21,10 +21,10 @@ use crate::{
 pub struct TransactionBuilder {
     network_params: NetworkParams,
 
-    inputs: IndexMap<TransactionInput, TransactionOutput>,
+    inputs: IndexMap<TransactionInput, Option<TransactionOutput>>,
     outputs: Vec<TransactionOutput>,
-    reference_inputs: IndexMap<TransactionInput, TransactionOutput>,
-    collateral: IndexMap<TransactionInput, TransactionOutput>,
+    reference_inputs: IndexMap<TransactionInput, Option<TransactionOutput>>,
+    collateral: IndexMap<TransactionInput, Option<TransactionOutput>>,
     collateral_return: Option<TransactionOutput>,
     mint: Option<MultiAsset<i64>>,
     valid_from_slot: Option<u64>,
@@ -63,17 +63,25 @@ impl TransactionBuilder {
         }
     }
 
-    pub fn input(mut self, input: TransactionInput, resolved: TransactionOutput) -> Self {
+    pub fn input(mut self, input: TransactionInput, resolved: Option<TransactionOutput>) -> Self {
         self.inputs.insert(input, resolved);
         self
     }
 
-    pub fn reference_input(mut self, input: TransactionInput, resolved: TransactionOutput) -> Self {
+    pub fn reference_input(
+        mut self,
+        input: TransactionInput,
+        resolved: Option<TransactionOutput>,
+    ) -> Self {
         self.reference_inputs.insert(input, resolved);
         self
     }
 
-    pub fn collateral(mut self, input: TransactionInput, resolved: TransactionOutput) -> Self {
+    pub fn collateral(
+        mut self,
+        input: TransactionInput,
+        resolved: Option<TransactionOutput>,
+    ) -> Self {
         self.collateral.insert(input, resolved);
         self
     }
@@ -174,7 +182,12 @@ impl TransactionBuilder {
             return Err(ValidationError::NoInputs);
         }
 
-        if self.collateral.iter().any(|(_, txo)| txo.is_multiasset()) {
+        if self
+            .collateral
+            .iter()
+            .filter_map(|(_, txo)| txo.as_ref())
+            .any(|x| x.is_multiasset())
+        {
             return Err(ValidationError::InvalidCollateralInput);
         }
 
