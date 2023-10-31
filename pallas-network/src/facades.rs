@@ -1,9 +1,12 @@
 use std::path::Path;
 
 use thiserror::Error;
-use tokio::net::{TcpListener, UnixListener};
+use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 use tracing::{debug, error};
+
+#[cfg(not(target_os = "windows"))]
+use tokio::net::UnixListener;
 
 use crate::miniprotocols::handshake::{n2c, n2n, Confirmation, VersionNumber};
 use crate::miniprotocols::PROTOCOL_N2N_HANDSHAKE;
@@ -30,10 +33,10 @@ pub enum Error {
 
 /// Client of N2N Ouroboros
 pub struct PeerClient {
-    plexer_handle: JoinHandle<Result<(), crate::multiplexer::Error>>,
+    pub plexer_handle: JoinHandle<Result<(), crate::multiplexer::Error>>,
     pub handshake: handshake::Confirmation<handshake::n2n::VersionData>,
-    chainsync: chainsync::N2NClient,
-    blockfetch: blockfetch::Client,
+    pub chainsync: chainsync::N2NClient,
+    pub blockfetch: blockfetch::Client,
 }
 
 impl PeerClient {
@@ -87,15 +90,15 @@ impl PeerClient {
 
 /// Server of N2N Ouroboros
 pub struct PeerServer {
-    plexer_handle: JoinHandle<Result<(), crate::multiplexer::Error>>,
+    pub plexer_handle: JoinHandle<Result<(), crate::multiplexer::Error>>,
     pub version: (VersionNumber, n2n::VersionData),
-    chainsync: chainsync::N2NServer,
-    blockfetch: blockfetch::Server,
+    pub chainsync: chainsync::N2NServer,
+    pub blockfetch: blockfetch::Server,
 }
 
 impl PeerServer {
     pub async fn accept(listener: &TcpListener, magic: u64) -> Result<Self, Error> {
-        let (bearer, _) = Bearer::accept_tcp(&listener)
+        let (bearer, _) = Bearer::accept_tcp(listener)
             .await
             .map_err(Error::ConnectFailure)?;
 
@@ -144,10 +147,10 @@ impl PeerServer {
 
 /// Client of N2C Ouroboros
 pub struct NodeClient {
-    plexer_handle: JoinHandle<Result<(), crate::multiplexer::Error>>,
+    pub plexer_handle: JoinHandle<Result<(), crate::multiplexer::Error>>,
     pub handshake: handshake::Confirmation<handshake::n2c::VersionData>,
-    chainsync: chainsync::N2CClient,
-    statequery: localstate::ClientV10,
+    pub chainsync: chainsync::N2CClient,
+    pub statequery: localstate::Client,
 }
 
 impl NodeClient {
@@ -233,7 +236,7 @@ impl NodeClient {
         &mut self.chainsync
     }
 
-    pub fn statequery(&mut self) -> &mut localstate::ClientV10 {
+    pub fn statequery(&mut self) -> &mut localstate::Client {
         &mut self.statequery
     }
 
@@ -244,12 +247,13 @@ impl NodeClient {
 
 /// Server of N2C Ouroboros
 pub struct NodeServer {
-    plexer_handle: JoinHandle<Result<(), crate::multiplexer::Error>>,
+    pub plexer_handle: JoinHandle<Result<(), crate::multiplexer::Error>>,
     pub version: (VersionNumber, n2c::VersionData),
-    chainsync: chainsync::N2CServer,
-    // statequery: localstate::Server,
+    pub chainsync: chainsync::N2CServer,
+    pub statequery: localstate::Server,
 }
 
+#[cfg(not(target_os = "windows"))]
 impl NodeServer {
     pub async fn accept(listener: &UnixListener, magic: u64) -> Result<Self, Error> {
         let (bearer, _) = Bearer::accept_unix(listener)
@@ -260,11 +264,11 @@ impl NodeServer {
 
         let hs_channel = server_plexer.subscribe_server(PROTOCOL_N2C_HANDSHAKE);
         let cs_channel = server_plexer.subscribe_server(PROTOCOL_N2C_CHAIN_SYNC);
-        // let sq_channel = server_plexer.subscribe_server(PROTOCOL_N2C_STATE_QUERY);
+        let sq_channel = server_plexer.subscribe_server(PROTOCOL_N2C_STATE_QUERY);
 
         let mut server_hs: handshake::Server<n2c::VersionData> = handshake::Server::new(hs_channel);
         let server_cs = chainsync::N2CServer::new(cs_channel);
-        // let server_sq = localstate::Server::new(sq_channel);
+        let server_sq = localstate::Server::new(sq_channel);
 
         let plexer_handle = tokio::spawn(async move { server_plexer.run().await });
 
@@ -278,7 +282,7 @@ impl NodeServer {
                 plexer_handle,
                 version: ver,
                 chainsync: server_cs,
-                // statequery: server_sq
+                statequery: server_sq
             })
         } else {
             plexer_handle.abort();
@@ -290,9 +294,9 @@ impl NodeServer {
         &mut self.chainsync
     }
 
-    // pub fn statequery(&mut self) -> &mut localstate::Server {
-    //     &mut self.statequery
-    // }
+    pub fn statequery(&mut self) -> &mut localstate::Server {
+        &mut self.statequery
+    }
 
     pub fn abort(&mut self) {
         self.plexer_handle.abort();

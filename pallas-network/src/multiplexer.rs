@@ -6,14 +6,14 @@ use std::net::SocketAddr;
 use std::path::Path;
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
-use tokio::net::{TcpListener, TcpStream, ToSocketAddrs, UnixListener};
+use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
 use tokio::select;
 use tokio::sync::mpsc::error::SendError;
 use tokio::time::Instant;
 use tracing::{debug, error, trace};
 
 #[cfg(not(target_os = "windows"))]
-use tokio::net::UnixStream;
+use tokio::net::{UnixListener, UnixStream};
 
 const HEADER_LEN: usize = 8;
 
@@ -501,7 +501,7 @@ mod tests {
 
         let channel = AgentChannel::for_client(0, &ingress, &egress);
 
-        egress.0.send((0 ^ 0x8000, input)).unwrap();
+        egress.0.send((0x8000, input)).unwrap();
 
         let mut buf = ChannelBuffer::new(channel);
 
@@ -525,7 +525,7 @@ mod tests {
 
         while !input.is_empty() {
             let chunk = Vec::from(input.drain(0..2).as_slice());
-            egress.0.send((0 ^ 0x8000, chunk)).unwrap();
+            egress.0.send((0x8000, chunk)).unwrap();
         }
 
         let mut buf = ChannelBuffer::new(channel);
