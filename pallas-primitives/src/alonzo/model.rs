@@ -195,7 +195,7 @@ pub type VrfKeyhash = Hash<32>;
 ; otherwise the funds are given to the other accounting pot.
  */
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum InstantaneousRewardSource {
     Reserves,
     Treasury,
@@ -233,7 +233,7 @@ impl<C> minicbor::encode::Encode<C> for InstantaneousRewardSource {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub enum InstantaneousRewardTarget {
     StakeCredentials(KeyValuePairs<StakeCredential, i64>),
     OtherAccountingPot(Coin),
@@ -275,7 +275,9 @@ impl<C> minicbor::encode::Encode<C> for InstantaneousRewardTarget {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(
+    Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash,
+)]
 #[cbor]
 pub struct MoveInstantaneousReward {
     #[n(0)]
@@ -296,7 +298,7 @@ pub type IPv4 = Bytes;
 pub type IPv6 = Bytes;
 pub type DnsName = String;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Relay {
     SingleHostAddr(Option<Port>, Option<IPv4>, Option<IPv6>),
     SingleHostName(Option<Port>, DnsName),
@@ -363,7 +365,7 @@ impl<C> minicbor::encode::Encode<C> for Relay {
 
 pub type PoolMetadataHash = Hash<32>;
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Hash)]
 pub struct PoolMetadata {
     #[n(0)]
     pub url: String,
@@ -375,7 +377,7 @@ pub struct PoolMetadata {
 pub type AddrKeyhash = Hash<28>;
 pub type Scripthash = Hash<28>;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Hash)]
 pub struct RationalNumber {
     pub numerator: u64,
     pub denominator: u64,
@@ -413,7 +415,7 @@ pub type UnitInterval = RationalNumber;
 
 pub type PositiveInterval = RationalNumber;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Eq, Ord, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Hash)]
 pub enum StakeCredential {
     AddrKeyhash(AddrKeyhash),
     Scripthash(Scripthash),
@@ -459,7 +461,7 @@ impl<C> minicbor::encode::Encode<C> for StakeCredential {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Hash)]
 pub enum Certificate {
     StakeRegistration(StakeCredential),
     StakeDeregistration(StakeCredential),
@@ -1224,7 +1226,7 @@ pub struct ExUnitPrices {
     step_price: PositiveInterval,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode, Debug, PartialEq, Eq, Clone, Hash)]
 #[cbor(index_only)]
 pub enum RedeemerTag {
     #[n(0)]

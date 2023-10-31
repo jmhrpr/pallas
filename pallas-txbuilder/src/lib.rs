@@ -14,7 +14,7 @@ pub mod prelude;
 pub mod util;
 
 use self::native_script::NativeScriptError;
-use self::plutus_script::PlutusScriptError;
+use self::plutus_script::{PlutusScriptError, RedeemerPurpose};
 use self::util::*;
 
 #[derive(Debug, Clone)]
@@ -58,11 +58,7 @@ pub enum ValidationError {
     #[error("Transaction has no inputs")]
     NoInputs,
 
-    /// The built transaction has no outputs
-    #[error("Transaction has no outputs")]
-    NoOutputs,
-
-    /// The timestamp provided for either the `.valid_after` or `.valid_until` methods of the
+    /// The timestamp provided for either the `.valid_from` or `.valid_until` methods of the
     /// builder are not valid. This usually happens because the provided timestamp comes before the
     /// Shelley hardfork, hence it is not possible to generate a slot number for it.
     #[error("Invalid timestamp")]
@@ -98,4 +94,9 @@ pub enum ValidationError {
     /// The provided native script is invalid
     #[error("Invalid native script: {0}")]
     InvalidPlutusScript(#[from] PlutusScriptError),
+
+    /// Input, mint policy, certificate or reward account specified in redeemer not found in
+    /// transaction
+    #[error("Invalid redeemer purpose: {0:?}")]
+    RedeemerPurposeMissing(RedeemerPurpose),
 }

@@ -11,19 +11,6 @@ fn test_transaction_building_fails_without_inputs() {
 }
 
 #[test]
-fn test_transaction_building_fails_without_outputs() {
-    let input = Input::build([0; 32], 0);
-    let resolved = Output::lovelaces(vec![], 1000000).build();
-
-    assert_matches!(
-        TransactionBuilder::new(NetworkParams::mainnet())
-            .input(input, resolved)
-            .build(),
-        Err(ValidationError::NoOutputs)
-    );
-}
-
-#[test]
 fn test_transaction_building_fails_with_multiasset_collateral_return() -> Result<(), ValidationError>
 {
     let input = Input::build([0; 32], 0);

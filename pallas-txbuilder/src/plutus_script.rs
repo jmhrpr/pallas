@@ -2,7 +2,9 @@ use std::fmt::Debug;
 
 use hex::FromHexError;
 use pallas_codec::utils::Bytes;
-use pallas_primitives::babbage::{PlutusV1Script, PlutusV2Script};
+use pallas_primitives::babbage::{
+    Certificate, PlutusV1Script, PlutusV2Script, PolicyId, RewardAccount, TransactionInput,
+};
 
 pub(crate) type V1Script = PlutusScriptBuilder<V1>;
 pub(crate) type V2Script = PlutusScriptBuilder<V2>;
@@ -85,5 +87,31 @@ impl PlutusScript {
 
     pub fn v2() -> PlutusScriptBuilder<V2> {
         PlutusScriptBuilder::default()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RedeemerPurpose {
+    Spend(TransactionInput),
+    Mint(PolicyId),
+    Reward(RewardAccount),
+    Cert(Certificate),
+}
+
+impl RedeemerPurpose {
+    pub fn spend(input: TransactionInput) -> Self {
+        Self::Spend(input)
+    }
+
+    pub fn mint(policy: PolicyId) -> Self {
+        Self::Mint(policy)
+    }
+
+    pub fn reward(account: RewardAccount) -> Self {
+        Self::Reward(account)
+    }
+
+    pub fn cert(certificate: Certificate) -> Self {
+        Self::Cert(certificate)
     }
 }
