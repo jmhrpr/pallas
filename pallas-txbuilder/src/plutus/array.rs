@@ -1,5 +1,4 @@
-
-use pallas_primitives::babbage::{PlutusData};
+use pallas_primitives::babbage::PlutusData;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct PlutusDataArray {

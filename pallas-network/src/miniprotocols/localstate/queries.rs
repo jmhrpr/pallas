@@ -122,27 +122,26 @@ impl Encode<()> for BlockQuery {
             BlockQuery::GetRewardInfoPools => {
                 e.array(1)?;
                 e.u16(18)?;
-            }
-            // BlockQuery::GetPoolState(()) => {
-            //     e.array(X)?;
-            //     e.u16(19)?;
-            // }
-            // BlockQuery::GetStakeSnapshots(()) => {
-            //     e.array(X)?;
-            //     e.u16(20)?;
-            // }
-            // BlockQuery::GetPoolDistr(()) => {
-            //     e.array(X)?;
-            //     e.u16(21)?;
-            // }
-            // BlockQuery::GetStakeDelegDeposits(()) => {
-            //     e.array(X)?;
-            //     e.u16(22)?;
-            // }
-            // BlockQuery::GetConstitutionHash => {
-            //     e.array(1)?;
-            //     e.u16(23)?;
-            // }
+            } // BlockQuery::GetPoolState(()) => {
+              //     e.array(X)?;
+              //     e.u16(19)?;
+              // }
+              // BlockQuery::GetStakeSnapshots(()) => {
+              //     e.array(X)?;
+              //     e.u16(20)?;
+              // }
+              // BlockQuery::GetPoolDistr(()) => {
+              //     e.array(X)?;
+              //     e.u16(21)?;
+              // }
+              // BlockQuery::GetStakeDelegDeposits(()) => {
+              //     e.array(X)?;
+              //     e.u16(22)?;
+              // }
+              // BlockQuery::GetConstitutionHash => {
+              //     e.array(1)?;
+              //     e.u16(23)?;
+              // }
         }
         Ok(())
     }

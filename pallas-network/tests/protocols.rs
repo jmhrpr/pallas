@@ -4,11 +4,11 @@ use std::time::Duration;
 
 use pallas_network::facades::{NodeClient, PeerClient, PeerServer};
 use pallas_network::miniprotocols::blockfetch::BlockRequest;
+use pallas_network::miniprotocols::chainsync::{ClientRequest, HeaderContent, Tip};
 use pallas_network::miniprotocols::handshake::n2c;
 use pallas_network::miniprotocols::handshake::n2n::VersionData;
 use pallas_network::miniprotocols::localstate::queries::{GenericResponse, Request};
 use pallas_network::miniprotocols::localstate::{ClientAcquireRequest, ClientQueryRequest};
-use pallas_network::miniprotocols::chainsync::{ClientRequest, HeaderContent, Tip};
 use pallas_network::miniprotocols::{
     blockfetch,
     chainsync::{self, NextResponse},
