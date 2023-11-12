@@ -1,6 +1,4 @@
-use std::time::Instant;
-
-use indexmap::IndexMap;
+use std::{collections::HashMap, time::Instant};
 
 use pallas_primitives::babbage::{
     AddrKeyhash, Certificate, ExUnits, NativeScript, NetworkId, PlutusData, PlutusV1Script,
@@ -8,11 +6,11 @@ use pallas_primitives::babbage::{
     TransactionOutput, WitnessSet,
 };
 
+use pallas_crypto::hash::Hash;
+
 use crate::{
     asset::MultiAsset,
-    fee::Fee,
-    native_script::{BuildNativeScript, NativeScriptBuilder},
-    plutus_script::{RedeemerPurpose, V1Script, V2Script},
+    plutus_script::RedeemerPurpose,
     transaction::{self, OutputExt},
     util::*,
     NetworkParams, ValidationError,
@@ -21,22 +19,25 @@ use crate::{
 pub struct TransactionBuilder {
     network_params: NetworkParams,
 
-    inputs: IndexMap<TransactionInput, Option<TransactionOutput>>,
+    inputs: HashMap<TransactionInput, Option<TransactionOutput>>,
     outputs: Vec<TransactionOutput>,
-    reference_inputs: IndexMap<TransactionInput, Option<TransactionOutput>>,
-    collateral: IndexMap<TransactionInput, Option<TransactionOutput>>,
+    reference_inputs: HashMap<TransactionInput, Option<TransactionOutput>>,
+    fee: Option<u64>,
+    collateral: HashMap<TransactionInput, Option<TransactionOutput>>,
     collateral_return: Option<TransactionOutput>,
     mint: Option<MultiAsset<i64>>,
     valid_from_slot: Option<u64>,
-    valid_until_slot: Option<u64>,
-    withdrawals: IndexMap<RewardAccount, u64>,
+    invalid_from_slot: Option<u64>,
+    withdrawals: HashMap<RewardAccount, u64>,
     certificates: Vec<Certificate>,
     required_signers: Vec<AddrKeyhash>,
+    network_id: Option<u32>,
     native_scripts: Vec<NativeScript>,
     plutus_v1_scripts: Vec<PlutusV1Script>,
     plutus_v2_scripts: Vec<PlutusV2Script>,
     plutus_data: Vec<PlutusData>,
-    redeemers: IndexMap<RedeemerPurpose, (PlutusData, ExUnits)>,
+    redeemers: HashMap<RedeemerPurpose, (PlutusData, ExUnits)>,
+    script_data_hash: Option<Hash<32>>,
 }
 
 impl TransactionBuilder {
@@ -44,22 +45,26 @@ impl TransactionBuilder {
         TransactionBuilder {
             network_params,
 
+            // .. Default::default() // TODO,
             inputs: Default::default(),
             outputs: Default::default(),
             reference_inputs: Default::default(),
+            fee: Default::default(),
             collateral: Default::default(),
             collateral_return: Default::default(),
             mint: Default::default(),
             valid_from_slot: Default::default(),
-            valid_until_slot: Default::default(),
+            invalid_from_slot: Default::default(),
             withdrawals: Default::default(),
             certificates: Default::default(),
             required_signers: Default::default(),
+            network_id: Default::default(),
             native_scripts: Default::default(),
             plutus_v1_scripts: Default::default(),
             plutus_v2_scripts: Default::default(),
             plutus_data: Default::default(),
             redeemers: Default::default(),
+            script_data_hash: Default::default(),
         }
     }
 
@@ -74,6 +79,11 @@ impl TransactionBuilder {
         resolved: Option<TransactionOutput>,
     ) -> Self {
         self.reference_inputs.insert(input, resolved);
+        self
+    }
+
+    pub fn fee(mut self, fee: u64) -> Self {
+        self.fee = Some(fee);
         self
     }
 
@@ -107,6 +117,11 @@ impl TransactionBuilder {
         self
     }
 
+    pub fn network_id(mut self, nid: u32) -> Self {
+        self.network_id = Some(nid);
+        self
+    }
+
     pub fn valid_from(mut self, timestamp: Instant) -> Result<Self, ValidationError> {
         self.valid_from_slot = Some(
             self.network_params
@@ -122,8 +137,8 @@ impl TransactionBuilder {
         self
     }
 
-    pub fn valid_until(mut self, timestamp: Instant) -> Result<Self, ValidationError> {
-        self.valid_until_slot = Some(
+    pub fn invalid_from(mut self, timestamp: Instant) -> Result<Self, ValidationError> {
+        self.invalid_from_slot = Some(
             self.network_params
                 .timestamp_to_slot(timestamp)
                 .ok_or(ValidationError::InvalidTimestamp)?,
@@ -132,8 +147,8 @@ impl TransactionBuilder {
         Ok(self)
     }
 
-    pub fn valid_until_slot(mut self, slot: u64) -> Self {
-        self.valid_until_slot = Some(slot);
+    pub fn invalid_from_slot(mut self, slot: u64) -> Self {
+        self.invalid_from_slot = Some(slot);
         self
     }
 
@@ -147,18 +162,21 @@ impl TransactionBuilder {
         self
     }
 
-    pub fn native_script<T: BuildNativeScript>(mut self, script: NativeScriptBuilder<T>) -> Self {
-        self.native_scripts.push(script.build());
+    /// Add a native script to the transaction
+    ///
+    /// You can use NativeScriptBuilder to create the NativeScript object type
+    pub fn native_script(mut self, script: NativeScript) -> Self {
+        self.native_scripts.push(script);
         self
     }
 
-    pub fn plutus_v1_script(mut self, script: V1Script) -> Self {
-        self.plutus_v1_scripts.push(script.build());
+    pub fn plutus_v1_script(mut self, script: PlutusV1Script) -> Self {
+        self.plutus_v1_scripts.push(script);
         self
     }
 
-    pub fn plutus_v2_script(mut self, script: V2Script) -> Self {
-        self.plutus_v2_scripts.push(script.build());
+    pub fn plutus_v2_script(mut self, script: PlutusV2Script) -> Self {
+        self.plutus_v2_scripts.push(script);
         self
     }
 
@@ -177,18 +195,14 @@ impl TransactionBuilder {
         self
     }
 
+    pub fn script_data_hash(mut self, hash: Hash<32>) -> Self {
+        self.script_data_hash = Some(hash);
+        self
+    }
+
     pub fn build(self) -> Result<transaction::Transaction, ValidationError> {
         if self.inputs.is_empty() {
             return Err(ValidationError::NoInputs);
-        }
-
-        if self
-            .collateral
-            .iter()
-            .filter_map(|(_, txo)| txo.as_ref())
-            .any(|x| x.is_multiasset())
-        {
-            return Err(ValidationError::InvalidCollateralInput);
         }
 
         if self
@@ -259,23 +273,52 @@ impl TransactionBuilder {
                         ex_units,
                     })
                 }
-                _ => todo!(), // TODO
+                _ => todo!(), // TODO: reward, cert
             }
         }
+
+        /*
+            TODO: script data hash computation (requires resolved utxos)
+
+            let buf = vec![];
+            let mut script_hash_data = Encoder::new(buf);
+            if !self.plutus_data.is_empty() && redeemers.is_empty() {
+                script_hash_data.array(0).unwrap(); // TODO
+
+                script_hash_data.array(self.plutus_data.len() as u64).unwrap();
+                for pd in self.plutus_data.iter() {
+                    script_hash_data.encode(pd).unwrap();
+                }
+
+                script_hash_data.map(0).unwrap();
+            } else {
+                script_hash_data.array(redeemers.len() as u64).unwrap();
+                for rdmr in redeemers.iter() {
+                    script_hash_data.encode(rdmr).unwrap();
+                }
+
+                script_hash_data.array(self.plutus_data.len() as u64).unwrap();
+                for pd in self.plutus_data.iter() {
+                    script_hash_data.encode(pd).unwrap();
+                }
+
+                // TODO: cost models
+            }
+        */
 
         let mut tx = transaction::Transaction {
             body: TransactionBody {
                 inputs,
                 outputs,
-                ttl: self.valid_until_slot,
+                ttl: self.invalid_from_slot,
                 validity_interval_start: self.valid_from_slot,
-                fee: 0,
+                fee: self.fee.unwrap_or_default(), // TODO
                 certificates: opt_if_empty(self.certificates),
                 withdrawals: None, // TODO
-                update: None,
+                update: None,      // TODO
                 auxiliary_data_hash: None,
                 mint,
-                script_data_hash: None,
+                script_data_hash: self.script_data_hash,
                 collateral: opt_if_empty(collaterals),
                 required_signers: opt_if_empty(self.required_signers),
                 network_id: NetworkId::from_u64(self.network_params.network_id()),
@@ -297,7 +340,6 @@ impl TransactionBuilder {
         };
 
         tx.body.auxiliary_data_hash = tx.auxiliary_data.clone().map(hash_to_bytes);
-        tx = Fee::linear().with_fee(tx)?;
 
         Ok(tx)
     }

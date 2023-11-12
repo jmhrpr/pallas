@@ -6,12 +6,12 @@ mod asset;
 mod builder;
 mod fee;
 mod native_script;
-mod plutus_script;
 
 pub mod plutus;
+pub mod plutus_script;
 pub mod prelude;
-pub mod util;
 pub mod transaction;
+pub mod util;
 
 use self::native_script::NativeScriptError;
 use self::plutus_script::{PlutusScriptError, RedeemerPurpose};
