@@ -17,7 +17,7 @@ fn test_transaction_building_fails_with_multiasset_collateral_return() -> Result
     let resolved = Output::lovelaces(vec![], 1000000).build();
     let output = Output::lovelaces(vec![], 1000000).build();
 
-    let assets = MultiAsset::new().add([0; 28].into(), "MyAsset", 1000000)?;
+    let assets = MultiAsset::new().add([0; 28].into(), b"MyAsset", 1000000)?;
     let collateral_return = Output::multiasset(vec![], 1000000, assets).build();
 
     let tx = TransactionBuilder::new(NetworkParams::mainnet())
@@ -35,7 +35,7 @@ fn test_transaction_building_fails_with_multiasset_collateral_return() -> Result
 fn test_transaction_building_fails_with_multiasset_collateral_input() -> Result<(), ValidationError>
 {
     let input = Input::build([0; 32], 0);
-    let assets = MultiAsset::new().add([0; 28].into(), "MyAsset", 1000000)?;
+    let assets = MultiAsset::new().add([0; 28].into(), b"MyAsset", 1000000)?;
     let resolved = Output::multiasset(vec![], 1000000, assets).build();
     let output = Output::lovelaces(vec![], 1000000).build();
 
