@@ -234,7 +234,7 @@ fn test_build_with_native_script() -> Result<(), ValidationError> {
     let script = NativeScript::all()
         .add(NativeScript::pubkey([0; 28]))
         .add(NativeScript::pubkey([1; 28]))
-    .build();
+        .build();
 
     let tx = TransactionBuilder::new(NetworkParams::mainnet())
         .input(input, Some(resolved))

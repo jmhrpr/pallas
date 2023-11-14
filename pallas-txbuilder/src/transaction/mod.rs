@@ -1,4 +1,5 @@
 use minicbor::{Decode, Encode};
+use pallas_codec::utils::Nullable;
 use pallas_crypto::key::ed25519::SecretKey;
 use pallas_primitives::{
     babbage::{AuxiliaryData, TransactionBody, WitnessSet},
@@ -23,7 +24,7 @@ pub struct Transaction {
     #[n(2)]
     pub is_valid: bool,
     #[n(3)]
-    pub auxiliary_data: Option<AuxiliaryData>,
+    pub auxiliary_data: Nullable<AuxiliaryData>,
 }
 
 impl Transaction {

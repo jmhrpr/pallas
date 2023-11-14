@@ -335,11 +335,11 @@ impl TransactionBuilder {
                 plutus_data: opt_if_empty(self.plutus_data),
                 redeemer: opt_if_empty(redeemers),
             },
-            is_valid: true,       // TODO
-            auxiliary_data: None, // TODO
+            is_valid: true,              // TODO
+            auxiliary_data: None.into(), // TODO
         };
 
-        tx.body.auxiliary_data_hash = tx.auxiliary_data.clone().map(hash_to_bytes);
+        tx.body.auxiliary_data_hash = tx.auxiliary_data.clone().map(hash_to_bytes).into();
 
         Ok(tx)
     }
